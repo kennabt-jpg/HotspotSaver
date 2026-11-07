@@ -78,6 +78,18 @@ check("describe: two apps plus updaters",
 check("describe: a single updater by name",
       AppController.describe(pick(["msautoupdate"])) == "Microsoft Office updates")
 
+// MARK: Open at login
+
+let loginPlist = LoginItem.plist(executable: "/Applications/Hotspot Saver.app/Contents/MacOS/HotspotSaver")
+check("login item uses the app's label and starts it in menu-bar mode",
+      loginPlist["Label"] as? String == AppInfo.bundleID
+          && (loginPlist["ProgramArguments"] as? [String]) == ["/Applications/Hotspot Saver.app/Contents/MacOS/HotspotSaver", "--menubar"])
+check("login item restarts after a crash but not after Quit",
+      (loginPlist["KeepAlive"] as? [String: Bool])?["SuccessfulExit"] == false && loginPlist["RunAtLoad"] as? Bool == true)
+check("login item plist serializes", (try? PropertyListSerialization.data(fromPropertyList: loginPlist, format: .xml, options: 0)) != nil)
+let oldConfig = try! JSONDecoder().decode(Config.self, from: Data("{}".utf8))
+check("older settings files haven't asked about Open at login yet", oldConfig.askedAboutLogin == false)
+
 // MARK: launch-agent matching against this Mac's real plists (read-only; skipped if not installed)
 
 if FileManager.default.fileExists(atPath: Paths.config.path) {

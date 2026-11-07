@@ -2,7 +2,20 @@
 
 A small macOS menu-bar app. When you tether to your phone, it pauses the things that quietly use a lot of data: cloud sync apps (OneDrive, Dropbox, Google Drive, Box, Adobe Creative Cloud) and the background auto-updaters for Office, Chrome, Zoom, Adobe and others. When you're back on a regular network, it turns back on everything it paused. You can turn any single item back on (or off) from the menu at any time.
 
-## Installing
+## Download
+
+For a Mac with macOS 14 (Sonoma) or later, Apple silicon or Intel. Do these steps on your Mac; it doesn't run on an iPhone or iPad.
+
+1. Download [**HotspotSaver.zip**](https://github.com/kennabt-jpg/HotspotSaver/releases/latest/download/HotspotSaver.zip). Safari unzips it for you; in Chrome or Firefox, double-click **HotspotSaver.zip** in your **Downloads** folder.
+2. In Finder, drag **Hotspot Saver** by itself from **Downloads** onto **Applications** in the sidebar, then open it from **Applications**. If it says *Move Hotspot Saver to your Applications folder*, click **Quit** and do this step again.
+3. The first time, macOS blocks it, because it isn't signed through Apple's paid developer program. Close the warning with **Done** (or **Cancel**), not *Move to Trash*. Then open the Apple menu → **System Settings → Privacy & Security**, scroll down to **Security**, and click **Open Anyway** next to Hotspot Saver. When the warning appears again, click **Open Anyway** (or **Open**), then enter your Mac password or use Touch ID. The button only stays there for about an hour; if it's gone, double-click Hotspot Saver again and come back. (On macOS 14 Sonoma you can instead Control-click Hotspot Saver in Applications, choose **Open**, then click **Open**.)
+4. Choose **Open at Login** when asked. macOS may show a *Background Items Added* notification; that's expected. There's no window or Dock icon: look for its icon (two linked rings) near the right end of the menu bar at the top of the screen, and click it to use the app. If you can't see it, the menu bar may be full; on a MacBook with a notch, icons can hide behind the notch.
+
+**To remove it:** click its menu-bar icon, untick **Open at login**, choose **Quit Hotspot Saver** (it turns everything back on first), then drag **Hotspot Saver** from Applications to the Trash. If you already deleted the app, switch off HotspotSaver in **System Settings → General → Login Items** (called **Login Items & Extensions** on macOS 15 and later).
+
+The download doesn't include the `hotspot-saver` command-line tool; build from source (below) if you want it.
+
+## Building from source
 
 You need macOS 14 (Sonoma) or later and Apple's Command Line Tools. If you don't have the tools yet, install them with:
 
@@ -43,7 +56,8 @@ Click it to see:
   - *Always (as if on a hotspot)*: handy on plane or hotel Wi-Fi, or an Android hotspot
   - *Never (pause only what I click)*
 - **Pause automatically on a hotspot**: tick which items get paused for you. Zotero, Papers, Superhuman Go and Acrobat sync are listed but off by default.
-- **Quit** turns everything back on first. After quitting, it stays off until your next login. Reopen it from `~/Applications` if you want it sooner.
+- **Open at login**: start Hotspot Saver automatically when you log in. It needs to be running to notice when you tether.
+- **Quit** turns everything back on first. After quitting, it stays off until your next login (if *Open at login* is on). Reopen it from your Applications folder if you want it sooner.
 
 A small pop-up under the icon tells you when things pause or resume. Click it to dismiss, or switch it off in the menu. macOS doesn't allow regular notifications from an app you build yourself, so it uses its own pop-up.
 
@@ -183,6 +197,7 @@ Run these from the repository folder:
 - `./install.sh`: builds and (re)installs, as described above.
 - `./build.sh`: only builds `build/Hotspot Saver.app`, without installing it.
 - `./test.sh`: runs the unit tests. They're read-only: nothing is quit or unloaded.
+- `./release.sh`: packages `build/HotspotSaver.zip` for the download link above. Add `--publish` to also create a GitHub release with it attached (raise the version in `Info.plist` first).
 - `./uninstall.sh`: turns everything back on and removes the app, the command and the LaunchAgent. Add `--all` to also delete settings and logs.
 
 ## Alternatives

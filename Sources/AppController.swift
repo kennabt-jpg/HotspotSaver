@@ -35,6 +35,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .filter { $0.processIdentifier != getpid() }
         if !others.isEmpty {
             Log.write("Already running; this copy is exiting.")
+            // Ask the running copy to say where it is, so opening it again doesn't look like nothing happened.
+            DistributedNotificationCenter.default().postNotificationName(
+                IPC.command, object: "0 hello", userInfo: nil, deliverImmediately: true)
+            usleep(200_000)
             exit(0)
         }
 
@@ -61,6 +65,62 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             suspensionBehavior: .deliverImmediately)
 
         Log.write("Started (mode: \(engine.config.mode.rawValue))")
+        // RunLoop.perform, not DispatchQueue.main.async: a modal alert inside a main-queue block
+        // would stop the network monitor and timers (also on the main queue) until it's answered.
+        RunLoop.main.perform { self.firstRunChecks() }
+    }
+
+    // MARK: first run and Open at login
+
+    private func firstRunChecks() {
+        if LoginItem.isTranslocated { showMoveToApplicationsAlert(); return }
+        // If the app was moved, keep Open at login pointing at this copy.
+        if LoginItem.isEnabled && LoginItem.pointsElsewhere && LoginItem.inApplicationsFolder {
+            setLoginItem(true)
+        }
+        guard !engine.config.askedAboutLogin else { return }
+        engine.updateConfig { $0.askedAboutLogin = true }
+        if LoginItem.isEnabled { return }        // set up already (install.sh)
+        let alert = NSAlert()
+        alert.messageText = "Open Hotspot Saver when you log in?"
+        alert.informativeText = "It needs to be running to notice when you tether to your phone. "
+            + "You can change this anytime from its menu-bar icon."
+        alert.addButton(withTitle: "Open at Login")
+        alert.addButton(withTitle: "Not Now")
+        NSApp.activate(ignoringOtherApps: true)
+        if alert.runModal() == .alertFirstButtonReturn { setLoginItem(true) }
+        if engine.state.paused.isEmpty {
+            notify("Hotspot Saver is running",
+                   "Its icon is in the menu bar. It pauses cloud sync and app updaters automatically when you tether to your phone.")
+        }
+    }
+
+    private func showMoveToApplicationsAlert() {
+        let alert = NSAlert()
+        alert.messageText = "Move Hotspot Saver to your Applications folder"
+        alert.informativeText = "macOS is running a temporary copy of Hotspot Saver, so it can't set itself to open at login. "
+            + "Click Quit. Then, in Finder, drag Hotspot Saver by itself into your Applications folder. If it's already there, "
+            + "drag it to the Desktop and then back into Applications. Then open it from Applications."
+        alert.addButton(withTitle: "Quit")
+        alert.addButton(withTitle: "Keep Running for Now")
+        NSApp.activate(ignoringOtherApps: true)
+        if alert.runModal() == .alertFirstButtonReturn { beginQuit(then: nil) }
+    }
+
+    @objc private func toggleLoginItem() {
+        if LoginItem.isTranslocated { showMoveToApplicationsAlert(); return }
+        if LoginItem.isEnabled && LoginItem.blockedInSettings { LoginItem.openSettings(); return }
+        setLoginItem(!LoginItem.isEnabled)
+    }
+
+    private func setLoginItem(_ on: Bool) {
+        do {
+            if on { try LoginItem.enable() } else { try LoginItem.disable() }
+            Log.write("Open at login \(on ? "on" : "off")")
+        } catch {
+            Log.write("Couldn't change Open at login: \(error.localizedDescription)")
+            notify("Couldn't change Open at login", error.localizedDescription)
+        }
     }
 
     // MARK: network → saver mode
@@ -484,6 +544,13 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         notifyItem.state = engine.config.notifications ? .on : .off
         menu.addItem(notifyItem)
 
+        let blocked = LoginItem.isEnabled && LoginItem.blockedInSettings
+        let loginItem = NSMenuItem(title: blocked ? "Open at login (switched off in System Settings…)" : "Open at login",
+                                   action: #selector(toggleLoginItem), keyEquivalent: "")
+        loginItem.target = self
+        loginItem.state = LoginItem.isEnabled && !blocked ? .on : .off
+        menu.addItem(loginItem)
+
         let more = NSMenu()
         for (title, sel) in [("Edit settings file…", #selector(editSettings)),
                              ("Reload settings", #selector(reloadSettings)),
@@ -679,6 +746,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                       ? "Turned everything back on and quit. Reopen \(AppInfo.name) from ~/Applications to start it again."
                       : "Quit, but couldn't turn these back on:\n" + failed.joined(separator: "\n"))
             }
+        case ("hello", _):
+            notify("Hotspot Saver is already running", "Click its icon in the menu bar (two linked rings) to use it.")
         case ("state", _):
             reply("saver \(saverActive ? "ON" : "off"), \(decided ? (tethered ? "on a hotspot" : "not on a hotspot") : "no decision yet")")
         default:

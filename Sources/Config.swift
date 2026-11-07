@@ -94,6 +94,8 @@ struct Config: Codable {
     var configVersion = Config.currentVersion
     var mode: SaverMode = .auto
     var notifications = true
+    /// Set once the first-run "Open at login?" question has been answered.
+    var askedAboutLogin = false
     var detection = DetectionConfig()
     var controls: [Control] = Config.defaultControls
 
@@ -104,6 +106,7 @@ struct Config: Codable {
         configVersion = try c.decodeIfPresent(Int.self, forKey: .configVersion) ?? 1
         mode = try c.decodeIfPresent(SaverMode.self, forKey: .mode) ?? .auto
         notifications = try c.decodeIfPresent(Bool.self, forKey: .notifications) ?? true
+        askedAboutLogin = try c.decodeIfPresent(Bool.self, forKey: .askedAboutLogin) ?? false
         detection = try c.decodeIfPresent(DetectionConfig.self, forKey: .detection) ?? DetectionConfig()
         controls = try c.decodeIfPresent([Control].self, forKey: .controls) ?? Config.defaultControls
     }
