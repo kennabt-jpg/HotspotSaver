@@ -1,0 +1,19 @@
+# Build output
+build/
+
+# macOS and editors
+.DS_Store
+*.swp
+*~
+.vscode/
+.idea/
+.swiftpm/
+xcuserdata/
+*.xcuserstate
+
+# Runtime files that live in ~/Library and should never be copied in here
+*.log
+config.json
+config.lastgood.json
+state.json
+state.unreadable-*.json
